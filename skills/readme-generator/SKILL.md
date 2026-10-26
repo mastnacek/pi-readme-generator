@@ -1,6 +1,6 @@
 ---
 name: readme-generator
-description: Generate or update a high-quality README.md for any project. Use when the user asks to create, write, generate, refresh, or improve a README or project documentation landing page — including via the /readme-gen command. Covers the analyze → draft → write → optional commit workflow and the git safety rules.
+description: Generate or update a high-quality README.md for any project. Use when the user asks to create, write, generate, refresh, or improve a README or project documentation landing page — including via the /readme-gen command. Covers the canonical YAML frontmatter contract, the analyze → draft → write → optional commit workflow, the git safety rules, and recording a searchable UMA project-anchor fact when the README is done.
 ---
 
 # README Generator
@@ -169,6 +169,22 @@ Rules:
    - Any notable decisions made during the process (language choice, audience,
      sections added/removed)
    This lets the user see the outcome at a glance without re-reading the file.
+
+9. **Record the UMA project anchor.** The README you just verified against
+   the code is the best source for a searchable memory anchor — use it.
+   - Call `uma_search` with the project name (hybrid mode, global scope).
+   - No anchor yet → call `uma_write`: type `reference`, scope `global`,
+     tags `project-anchor` + domain tags (e.g. `domino`, `ocr`, `rust`),
+     `staleAfter` ~6 months out. Body: what the project does (1-2 sentences
+     from the README pitch), stack, and the characteristic
+     techniques/problems it solves — the text a future `uma_search` should
+     match when a similar project starts. Reference the registry category.
+   - Anchor exists but the README revealed drift (renamed, pivoted,
+     re-stacked) → `uma_supersede` the old fact with the revised anchor.
+   - Trivial / throwaway / third-party-inspiration projects → skip; the
+     store stays clean. When in doubt, ask the user.
+   - The write goes through the operator's approval modal — propose, never
+     retry a rejected write.
 
 ## Git safety rules (non-negotiable)
 
