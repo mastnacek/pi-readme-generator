@@ -28,12 +28,12 @@ export interface CardStrings {
 	done: string;
 	/** README generator command description */
 	readmeGenDesc: string;
-	/** Subcommand descriptions */
-	generateDesc: string;
-	analyzeDesc: string;
-	commitDesc: string;
-	statusDesc: string;
-	langDesc: string;
+	/** Shown when /readme-gen hands the request to the agent. */
+	agentDelegated: string;
+	/** Completion label for the optional free-text argument. */
+	extraArgsDesc: string;
+	/** Completion description for the optional free-text argument. */
+	extraArgsHint: string;
 }
 
 const STRINGS: Record<Locale, CardStrings> = {
@@ -43,12 +43,10 @@ const STRINGS: Record<Locale, CardStrings> = {
 		status: (enabled) => `pi-readme-generator is ${enabled ? "enabled" : "muted"}.`,
 		confirm: "Do you really want to continue?",
 		done: "Done.",
-		readmeGenDesc: "Generate or update README.md with project analysis and git commit",
-		generateDesc: "Analyze project, generate README, init git, and commit",
-		analyzeDesc: "Only analyze project structure and show details",
-		commitDesc: "Stage changes and create a commit with emoji",
-		statusDesc: "Show plugin status",
-		langDesc: "Change UI language",
+		readmeGenDesc: "Ask the agent to generate or update README.md (skill-driven)",
+		agentDelegated: "README request handed to the agent — follow along in the chat.",
+		extraArgsDesc: "extra instructions",
+		extraArgsHint: "Free-text instructions forwarded to the agent, e.g. \"in Czech, add badges\"",
 	},
 	cs: {
 		title: "pi-readme-generator",
@@ -56,12 +54,10 @@ const STRINGS: Record<Locale, CardStrings> = {
 		status: (enabled) => `pi-readme-generator je ${enabled ? "zapnut" : "ztlumen"}.`,
 		confirm: "Opravdu chcete pokračovat?",
 		done: "Hotovo.",
-		readmeGenDesc: "Vygeneruj nebo aktualizuj README.md s analýzou projektu a git commit",
-		generateDesc: "Analyzuj projekt, vygeneruj README, inicializuj git a commituj",
-		analyzeDesc: "Pouze analyzuj strukturu projektu a zobraz detaily",
-		commitDesc: "Přidej změny a vytvoř commit s emoji",
-		statusDesc: "Zobraz stav pluginu",
-		langDesc: "Změň jazyk UI",
+		readmeGenDesc: "Požádej agenta o vygenerování nebo aktualizaci README.md (řízeno skillem)",
+		agentDelegated: "Požadavek na README předán agentovi — sleduj průběh v chatu.",
+		extraArgsDesc: "doplňující pokyny",
+		extraArgsHint: "Volný text předaný agentovi, např. \"česky, přidej badges\"",
 	},
 };
 

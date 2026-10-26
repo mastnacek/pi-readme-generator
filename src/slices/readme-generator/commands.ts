@@ -1,64 +1,46 @@
 /**
- * Commands slice for README generator — single command interface.
+ * Commands slice — `/readme-gen` delegates the work to the agent.
+ *
+ * The command never runs a hidden workflow. It hands the agent a prompt that
+ * points at the bundled `readme-generator` skill, so the user sees the agent
+ * actually working (and can steer it) instead of a silent template dump.
  */
 
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
-import { stringsFor, type Locale } from "../../shared/i18n.js";
+import { stringsFor } from "../../shared/i18n.js";
 import type { PluginState } from "../../shared/state.js";
-import { ReadmeGeneratorEngine } from "./engine.js";
-import type { ProgressStage } from "./types.js";
 
 export function registerReadmeGeneratorCommands(pi: ExtensionAPI, state: PluginState): void {
 	const s = stringsFor(state.lang);
-	
+
 	pi.registerCommand("readme-gen", {
 		description: s.readmeGenDesc,
-		getArgumentCompletions: (prefix: string) => readmeGenCompletions(prefix, state.lang, s),
+		getArgumentCompletions: (prefix: string) => {
+			if (!prefix.trim()) {
+				return [{
+					value: "",
+					label: s.extraArgsDesc,
+					description: s.extraArgsHint,
+				}];
+			}
+			return null;
+		},
 		handler: async (args: string, ctx: ExtensionCommandContext) => {
-			if (!ctx.hasUI) return;
-			
-			const projectRoot = ctx.cwd;
-			const customMessage = args.trim() || undefined;
-			
-			const updateStatus = (stage: ProgressStage) => {
-				ctx.ui.setStatus(`README Gen: ${stage.message} (${stage.progress}%)`, 'info');
-				if (stage.details) {
-					ctx.ui.notify(stage.details, "info");
-				}
-			};
-			
-			ctx.ui.setStatus("README Gen: Starting analysis...", 'info');
-			ctx.ui.notify("🔍 Analyzing project structure...", "info");
-			
-			try {
-				const engine = new ReadmeGeneratorEngine(pi, projectRoot, updateStatus);
-				const result = await engine.runFullWorkflow(customMessage);
-				
-				ctx.ui.setStatus(`README Gen: Complete! ${result.commit.emoji} ${result.commit.message.split('\n')[0]}`, 'info');
-				ctx.ui.notify(`✅ ${s.done} README generated and committed!`, "info");
-				
-				if (result.commit.isFirstCommit) {
-					ctx.ui.notify(`🎉 First commit created with ${result.commit.files.length} files`, "info");
-				} else {
-					ctx.ui.notify(`📝 Revision commit: ${result.commit.emoji} ${result.commit.message.split('\n')[0]}`, "info");
-				}
-			} catch (error) {
-				ctx.ui.setStatus("README Gen: Error", 'error');
-				ctx.ui.notify(`❌ Failed: ${error}`, "error");
+			const extra = args.trim();
+			// Model-facing prompt — intentionally English in every locale.
+			const prompt = [
+				`Generate or update the README.md for the project at ${ctx.cwd}.`,
+				`Load the "readme-generator" skill and follow its workflow exactly.`,
+				extra ? `Additional instructions from the user: ${extra}` : "",
+			].filter(Boolean).join("\n");
+
+			// Delivered as a normal user message: starts a turn when idle,
+			// queues behind the current run otherwise.
+			pi.sendUserMessage(prompt);
+
+			if (ctx.hasUI) {
+				ctx.ui.notify(s.agentDelegated, "info");
 			}
 		},
 	});
-}
-
-function readmeGenCompletions(prefix: string, _lang: Locale, s: any): { value: string; label: string; description: string }[] | null {
-	// Only offer the optional custom message completion
-	const text = prefix.trimStart();
-	if (!text) {
-		return [{
-			value: '"custom commit message"',
-			label: s.generateDesc,
-			description: "Optional custom commit message (quoted)",
-		}];
-	}
-	return null;
 }

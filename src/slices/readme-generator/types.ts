@@ -19,24 +19,11 @@ export interface ProjectAnalysis {
   hasReadme: boolean;
 }
 
-export interface ProgressStage {
-  stage: 'analyzing' | 'writing_readme' | 'git_init' | 'git_commit' | 'complete' | 'error';
-  message: string;
-  progress: number;
-  details?: string;
-}
-
-export type ProgressCallback = (stage: ProgressStage) => void;
-
 export interface GitCommitInfo {
   isFirstCommit: boolean;
   files: string[];
   message: string;
-  emoji: string;
 }
 
-export interface ReadmeGeneratorResult {
-  analysis: ProjectAnalysis;
-  readme: string;
-  commit: GitCommitInfo;
-}
+/** Actions supported by the readme_generator tool. */
+export type ReadmeAction = "analyze" | "scaffold" | "commit";

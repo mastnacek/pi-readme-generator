@@ -1,204 +1,102 @@
 /**
  * Git operations manager.
+ *
+ * Safety contract (hard rules, do not relax):
+ * - Stages and commits ONLY the README file — never `git add -A`, never the
+ *   whole working tree. The user's unrelated changes are not ours to commit.
+ * - Never touches git config (user.name / user.email). The repository's
+ *   existing identity is used as-is.
+ * - Never initializes a repository on its own — git init is a user decision.
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { promises as fs } from "node:fs";
-import { join, basename } from "node:path";
-import type { GitCommitInfo, ProgressCallback, ProgressStage } from "./types.js";
+import { join } from "node:path";
+import type { GitCommitInfo } from "./types.js";
+
+const README_CANDIDATES = ["README.md", "README.markdown", "README.txt", "README"];
 
 export class GitManager {
   private projectRoot: string;
-  private onProgress: ProgressCallback;
 
-  constructor(projectRoot: string, onProgress: ProgressCallback) {
+  constructor(projectRoot: string) {
     this.projectRoot = projectRoot;
-    this.onProgress = onProgress;
   }
 
-  private reportProgress(stage: ProgressStage): void {
-    this.onProgress(stage);
+  async hasRepository(): Promise<boolean> {
+    try {
+      await fs.access(join(this.projectRoot, ".git"));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
-  async initialize(): Promise<void> {
-    this.reportProgress({ stage: 'git_init', message: 'Initializing Git repository...', progress: 70 });
-    
-    const hasGit = await this.checkGit();
-    if (!hasGit) {
+  /** First README file present at the project root, or null. */
+  async findReadme(): Promise<string | null> {
+    for (const candidate of README_CANDIDATES) {
       try {
-        execSync('git init', { cwd: this.projectRoot, stdio: 'ignore' });
-        this.reportProgress({ 
-          stage: 'git_init', 
-          message: 'Git repository initialized', 
-          progress: 75 
-        });
-      } catch (error) {
-        throw new Error(`Failed to initialize git: ${error}`);
+        await fs.access(join(this.projectRoot, candidate));
+        return candidate;
+      } catch {
+        // try next candidate
       }
-    } else {
-      this.reportProgress({ 
-        stage: 'git_init', 
-        message: 'Git repository already exists', 
-        progress: 75 
-      });
     }
-    
-    // Configure git if needed
-    try {
-      execSync('git config user.name "pi-readme-generator"', { cwd: this.projectRoot, stdio: 'ignore' });
-      execSync('git config user.email "pi-readme-generator@local"', { cwd: this.projectRoot, stdio: 'ignore' });
-    } catch {
-      // git config failed, continue without it
-    }
+    return null;
   }
 
-  async commit(customMessage?: string): Promise<GitCommitInfo> {
-    this.reportProgress({ stage: 'git_commit', message: 'Staging files for commit...', progress: 80 });
-    
-    try {
-      // Add all files
-      execSync('git add -A', { cwd: this.projectRoot, stdio: 'ignore' });
-      
-      // Check if there are changes to commit
-      const statusOutput = execSync('git status --porcelain', { cwd: this.projectRoot, encoding: 'utf-8' });
-      const files = statusOutput.trim().split('\n').filter(Boolean).map(line => line.slice(3));
-      
-      if (files.length === 0) {
-        this.reportProgress({ 
-          stage: 'git_commit', 
-          message: 'No changes to commit', 
-          progress: 100 
-        });
-        return {
-          isFirstCommit: false,
-          files: [],
-          message: 'No changes',
-          emoji: '✅',
-        };
-      }
-      
-      const isFirstCommit = !(await this.checkGitHistory());
-      const commitMessage = customMessage || this.generateCommitMessage(isFirstCommit, files);
-      const emoji = this.getCommitEmoji(isFirstCommit, files);
-      
-      this.reportProgress({ 
-        stage: 'git_commit', 
-        message: `Committing: ${emoji} ${commitMessage.split('\n')[0]}`, 
-        progress: 90,
-        details: `${files.length} files staged`
-      });
-      
-      execSync(`git commit -m "${commitMessage.replace(/"/g, '\\"')}"`, { 
-        cwd: this.projectRoot, 
-        stdio: 'ignore' 
-      });
-      
-      this.reportProgress({ 
-        stage: 'complete', 
-        message: `Commit successful: ${emoji} ${commitMessage.split('\n')[0]}`, 
-        progress: 100 
-      });
-      
-      return {
-        isFirstCommit,
-        files,
-        message: commitMessage,
-        emoji,
-      };
-    } catch (error) {
-      this.reportProgress({ 
-        stage: 'error', 
-        message: `Commit failed: ${error}`, 
-        progress: 0 
-      });
-      throw error;
+  /**
+   * Stage and commit ONLY the README file.
+   *
+   * Throws with a precise, agent-actionable message when there is no
+   * repository, no README, or nothing to commit.
+   */
+  async commitReadme(customMessage?: string): Promise<GitCommitInfo> {
+    if (!(await this.hasRepository())) {
+      throw new Error(
+        "No git repository in this project. Ask the user before running `git init` — never initialize a repository on your own."
+      );
     }
+
+    const readme = await this.findReadme();
+    if (!readme) {
+      throw new Error("No README file found at the project root — write one first.");
+    }
+
+    // Stage exactly one file. Pathspec keeps every other dirty file out.
+    execFileSync("git", ["add", "--", readme], { cwd: this.projectRoot, stdio: "ignore" });
+
+    const status = execFileSync("git", ["status", "--porcelain", "--", readme], {
+      cwd: this.projectRoot,
+      encoding: "utf-8",
+    });
+
+    if (!status.trim()) {
+      return { isFirstCommit: false, files: [], message: "No README changes to commit" };
+    }
+
+    const isFirstCommit = !this.hasHistory();
+    const message =
+      customMessage?.trim() ||
+      (isFirstCommit ? "📝 docs: add README" : "📝 docs: update README");
+
+    execFileSync("git", ["commit", "-m", message, "--", readme], {
+      cwd: this.projectRoot,
+      stdio: "ignore",
+    });
+
+    return { isFirstCommit, files: [readme], message };
   }
 
-  private async checkGit(): Promise<boolean> {
+  private hasHistory(): boolean {
     try {
-      await fs.access(join(this.projectRoot, '.git'));
+      execFileSync("git", ["rev-parse", "--verify", "HEAD"], {
+        cwd: this.projectRoot,
+        stdio: "ignore",
+      });
       return true;
     } catch {
       return false;
     }
-  }
-
-  private async checkGitHistory(): Promise<boolean> {
-    try {
-      execSync('git rev-parse --verify HEAD', { cwd: this.projectRoot, stdio: 'ignore' });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  private generateCommitMessage(isFirstCommit: boolean, files: string[]): string {
-    if (isFirstCommit) {
-      const fileList = files.slice(0, 10).join(', ') + (files.length > 10 ? ` and ${files.length - 10} more` : '');
-      return `🎉 Initial commit: Add project files\n\nFiles: ${fileList}`;
-    }
-    
-    // Determine commit type based on files
-    const hasReadme = files.some(f => f.toLowerCase().includes('readme'));
-    const hasConfig = files.some(f => ['package.json', 'tsconfig.json', 'Cargo.toml', 'pyproject.toml'].includes(basename(f)));
-    const hasSource = files.some(f => f.startsWith('src/') || f.startsWith('lib/') || f.startsWith('app/'));
-    const hasTest = files.some(f => f.includes('test') || f.includes('spec'));
-    const hasDocs = files.some(f => f.includes('doc') || f.endsWith('.md'));
-    
-    let type = 'chore';
-    let scope = '';
-    
-    if (hasReadme) {
-      type = 'docs';
-      scope = 'readme';
-    } else if (hasConfig) {
-      type = 'config';
-    } else if (hasSource) {
-      type = 'feat';
-      scope = 'src';
-    } else if (hasTest) {
-      type = 'test';
-    } else if (hasDocs) {
-      type = 'docs';
-    }
-    
-    const scopeStr = scope ? `(${scope})` : '';
-    const shortFiles = files.slice(0, 5).join(', ') + (files.length > 5 ? ` +${files.length - 5} more` : '');
-    
-    return `${type}${scopeStr}: ${this.getCommitDescription(type, files)}\n\nFiles: ${shortFiles}`;
-  }
-
-  private getCommitDescription(type: string, _files: string[]): string {
-    const descriptions: Record<string, string> = {
-      'docs': 'Update documentation',
-      'feat': 'Add new functionality',
-      'fix': 'Fix bug',
-      'config': 'Update configuration',
-      'test': 'Add or update tests',
-      'chore': 'Maintenance tasks',
-      'refactor': 'Refactor code',
-      'style': 'Code style improvements',
-      'perf': 'Performance improvements',
-    };
-    
-    return descriptions[type] || 'Update project';
-  }
-
-  private getCommitEmoji(isFirstCommit: boolean, files: string[]): string {
-    if (isFirstCommit) return '🎉';
-    
-    const hasReadme = files.some(f => f.toLowerCase().includes('readme'));
-    const hasConfig = files.some(f => ['package.json', 'tsconfig.json', 'Cargo.toml', 'pyproject.toml'].includes(basename(f)));
-    const hasSource = files.some(f => f.startsWith('src/') || f.startsWith('lib/') || f.startsWith('app/'));
-    const hasTest = files.some(f => f.includes('test') || f.includes('spec'));
-    const hasDocs = files.some(f => f.includes('doc') || f.endsWith('.md'));
-    
-    if (hasReadme) return '📝';
-    if (hasConfig) return '⚙️';
-    if (hasSource) return '✨';
-    if (hasTest) return '🧪';
-    if (hasDocs) return '📚';
-    return '🔧';
   }
 }

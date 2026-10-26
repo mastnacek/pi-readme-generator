@@ -1,7 +1,7 @@
 {
   "name": "pi-readme-generator",
-  "version": "0.1.0",
-  "description": "Analyzes projects, generates/updates README.md with best practices, and manages git commits with TUI status display",
+  "version": "0.2.0",
+  "description": "Skill-driven README generation: the agent writes the README, the plugin analyzes the project and commits only the README file",
   "type": "module",
   "main": "./index.ts",
   "keywords": [
@@ -16,11 +16,15 @@
     "package.json",
     "./index.ts",
     "dist",
-    "src"
+    "src",
+    "skills"
   ],
   "pi": {
     "extensions": [
       "./index.ts"
+    ],
+    "skills": [
+      "./skills/readme-generator"
     ]
   },
   "peerDependencies": {
@@ -31,6 +35,6 @@
     "typebox": "*"
   },
   "scripts": {
-    "test": "node --test test/**/*.test.js"
+    "test": "tsc -p tsconfig.test.json && node --test \"dist/test/*.test.js\""
   }
 }
