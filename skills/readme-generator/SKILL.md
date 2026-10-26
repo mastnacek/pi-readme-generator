@@ -15,8 +15,18 @@ request, and commits the finished file.
    structured facts (language, framework, package manager, entry points,
    scripts, `hasReadme`). Then read the files that actually explain the
    project: the manifest (`package.json` / `Cargo.toml` / `pyproject.toml`),
-   the entry point, and any existing docs. Facts from the tool orient you;
-   reading the code is what makes the README true.
+   the entry point, and the source code itself.
+
+   **STRICT RULE — source code only.** When figuring out what the program
+   does, NEVER read README.md or any other Markdown/documentation file
+   (*.md, *.markdown, docs/, CHANGELOG, ...). Go straight to the source
+   code: entry points, main modules, CLI handlers, tests. Docs are
+   marketing, frequently stale, and often written by this same template
+   machinery — they are not evidence. Every statement in the README you
+   write must trace back to code you read, not to prose you read.
+   (The single exception: step 2 below, where you read an EXISTING README
+   solely to preserve its custom sections during an update — never to
+   learn what the program does.)
 
 2. **Check for an existing README.** If `hasReadme` is true, this is an
    UPDATE, not a rewrite:
