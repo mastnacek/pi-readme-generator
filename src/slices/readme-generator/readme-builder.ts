@@ -3,6 +3,7 @@
  */
 
 import type { ProjectAnalysis } from "./types.js";
+import { generateFrontmatter } from "./frontmatter.js";
 
 export class ReadmeBuilder {
   private analysis: ProjectAnalysis;
@@ -16,6 +17,15 @@ export class ReadmeBuilder {
             entryPoints, testFiles, configFiles, hasGit } = this.analysis;
     
     const lines: string[] = [];
+    
+    // YAML frontmatter with project analysis data
+    const frontmatter = generateFrontmatter(this.analysis);
+    if (frontmatter) {
+      lines.push(`---
+${frontmatter}
+---`);
+      lines.push('');
+    }
     
     // Title and badges
     lines.push(`# ${name}`);
