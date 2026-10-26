@@ -24,7 +24,8 @@
       "./index.ts"
     ],
     "skills": [
-      "./skills/readme-generator"
+      "./skills/readme-generator",
+      "./skills/pi_project_registry"
     ]
   },
   "peerDependencies": {
