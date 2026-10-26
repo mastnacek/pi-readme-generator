@@ -71,6 +71,16 @@ request, and commits the finished file.
    `docs: add README` / `docs: refresh install instructions`.
    Show the user the message first when in doubt.
 
+7. **Summarize for the chat.** After finishing (whether committed or not),
+   output a brief summary in the chat window with:
+   - Project name and one-line description (what it does, who it's for)
+   - Key tools/scripts/entry points
+   - Language, framework, package manager
+   - Whether a commit was made (and the commit hash/message if so)
+   - Any notable decisions made during the process (language choice, audience,
+     sections added/removed)
+   This lets the user see the outcome at a glance without re-reading the file.
+
 ## Git safety rules (non-negotiable)
 
 - Only the README file is ever staged — the tool enforces this. Never work
