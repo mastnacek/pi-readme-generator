@@ -7,6 +7,7 @@
  * - Never touches git config (user.name / user.email). The repository's
  *   existing identity is used as-is.
  * - Never initializes a repository on its own — git init is a user decision.
+ * - Requires YAML frontmatter in README.md — mandatory for all READMEs.
  */
 
 import { execFileSync } from "node:child_process";
@@ -49,7 +50,7 @@ export class GitManager {
    * Stage and commit ONLY the README file.
    *
    * Throws with a precise, agent-actionable message when there is no
-   * repository, no README, or nothing to commit.
+   * repository, no README, no frontmatter, or nothing to commit.
    */
   async commitReadme(customMessage?: string): Promise<GitCommitInfo> {
     if (!(await this.hasRepository())) {
@@ -62,6 +63,9 @@ export class GitManager {
     if (!readme) {
       throw new Error("No README file found at the project root — write one first.");
     }
+
+    // Validate YAML frontmatter is present
+    await this.validateFrontmatter(readme);
 
     // Stage exactly one file. Pathspec keeps every other dirty file out.
     execFileSync("git", ["add", "--", readme], { cwd: this.projectRoot, stdio: "ignore" });
@@ -97,6 +101,38 @@ export class GitManager {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Validates that the README contains YAML frontmatter.
+   * Frontmatter is mandatory for all README files.
+   */
+  private async validateFrontmatter(readmeFile: string): Promise<void> {
+    const readmePath = join(this.projectRoot, readmeFile);
+    const content = await fs.readFile(readmePath, "utf-8");
+
+    // Check for YAML frontmatter (--- at start, followed by content, then ---)
+    const trimmed = content.trimStart();
+    if (!trimmed.startsWith("---")) {
+      throw new Error(
+        "README.md is missing mandatory YAML frontmatter. " +
+        "All README files must start with a frontmatter block. " +
+        "Run `readme_generator action:analyze` then `action:scaffold` to generate a template with frontmatter, " +
+        "or add frontmatter manually. See pi-readme-generator docs for format."
+      );
+    }
+
+    // Verify closing --- exists
+    const afterOpening = trimmed.slice(3).trimStart();
+    if (!afterOpening.startsWith("---") && !afterOpening.includes("\n---\n")) {
+      // Check for closing delimiter
+      const closingIdx = afterOpening.indexOf("\n---\n");
+      if (closingIdx === -1) {
+        throw new Error(
+          "README.md has invalid YAML frontmatter: missing closing '---' delimiter."
+        );
+      }
     }
   }
 }
