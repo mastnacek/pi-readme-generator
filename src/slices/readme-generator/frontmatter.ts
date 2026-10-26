@@ -17,7 +17,7 @@
 import type { ProjectAnalysis } from "./types.js";
 
 /** Keep in sync with package.json — test/frontmatter.test.ts asserts it. */
-export const PLUGIN_VERSION = "0.3.0";
+export const PLUGIN_VERSION = "0.5.0";
 
 /**
  * The canonical field set and order. Structure is fixed; only values vary.
@@ -25,7 +25,18 @@ export const PLUGIN_VERSION = "0.3.0";
  * generator, normalizer, validator and tests all derive from this table.
  */
 export const FRONTMATTER_TEMPLATE = {
-	project: ["name", "description", "language", "category", "framework", "packageManager"],
+	project: [
+		"name",
+		"description",
+		"language",
+		"category",
+		"framework",
+		"packageManager",
+		"status",
+		"quality",
+		"context",
+		"progress",
+	],
 	analysis: [
 		"hasGit", "hasReadme", "mainFiles", "entryPoints", "configFiles",
 		"testFiles", "testFileCount", "dependencies", "devDependencies", "scripts",
@@ -89,6 +100,10 @@ function projectFieldDefault(analysis: ProjectAnalysis, key: string): string {
 		case "category": return analysis.category ?? "";
 		case "framework": return analysis.framework ?? "";
 		case "packageManager": return analysis.packageManager ?? "";
+		case "status": return analysis.suggestedStatus ?? "prototype";
+		case "quality": return analysis.suggestedQuality ?? "experimental";
+		case "context": return analysis.suggestedContext ?? "personal";
+		case "progress": return analysis.suggestedProgress ?? "in-progress";
 		default: return "";
 	}
 }
@@ -223,7 +238,14 @@ export function normalizeReadmeFrontmatter(content: string, analysis: ProjectAna
 
 	const projectValues: Record<string, string> = {};
 	for (const key of FRONTMATTER_TEMPLATE.project) {
-		const existing = parsed?.values.project?.[key] ?? "";
+		let existing = parsed?.values.project?.[key] ?? "";
+		// Support user aliases/synonyms in existing frontmatter:
+		if (!existing.trim() && key === "status" && parsed?.values.project?.state) {
+			existing = parsed.values.project.state;
+		}
+		if (!existing.trim() && key === "context") {
+			existing = parsed?.values.project?.scope ?? parsed?.values.project?.audience ?? parsed?.values.project?.type ?? "";
+		}
 		if (existing.trim() !== "") {
 			projectValues[key] = existing;
 			preserved.push(`project.${key}`);

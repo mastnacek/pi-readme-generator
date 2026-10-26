@@ -1,6 +1,6 @@
 {
   "name": "pi-readme-generator",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "description": "Skill-driven README generation with canonical YAML frontmatter: the agent writes the README, the plugin analyzes the project, enforces the fixed frontmatter structure via hooks, and commits only the README file",
   "type": "module",
   "main": "./index.ts",

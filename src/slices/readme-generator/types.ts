@@ -19,6 +19,17 @@ export interface ProjectAnalysis {
   hasReadme: boolean;
   /** Category from the persistent project registry (~/.pi/projects.json), if registered. */
   category?: string;
+
+  // Evaluated status, quality, context, and progress metrics
+  hasCI?: boolean;
+  hasLicense?: boolean;
+  hasTypes?: boolean;
+  gitCommitCount?: number;
+  gitLastCommit?: string;
+  suggestedStatus?: string;
+  suggestedQuality?: string;
+  suggestedContext?: string;
+  suggestedProgress?: string;
 }
 
 export interface GitCommitInfo {

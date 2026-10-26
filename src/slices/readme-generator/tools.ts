@@ -78,10 +78,12 @@ async function analyze(projectRoot: string): Promise<AgentToolResult<unknown>> {
 		`Category: ${analysis.category ?? "not registered in ~/.pi/projects.json"}`,
 		`Language: ${analysis.language}${analysis.framework ? `, Framework: ${analysis.framework}` : ""}`,
 		`Package manager: ${analysis.packageManager ?? "unknown"}`,
+		`Context: ${analysis.suggestedContext ?? "personal"} (personal vs work)`,
+		`Status: ${analysis.suggestedStatus ?? "prototype"} | Progress: ${analysis.suggestedProgress ?? "in-progress"}`,
+		`Quality: ${analysis.suggestedQuality ?? "experimental"} (tests: ${analysis.testFiles?.length ?? 0}, CI: ${analysis.hasCI ? "yes" : "no"}, types: ${analysis.hasTypes ? "yes" : "no"})`,
 		`Entry points: ${analysis.entryPoints?.join(", ") || "none detected"}`,
 		`Main files: ${analysis.mainFiles.join(", ") || "none detected"}`,
 		`Config files: ${analysis.configFiles?.join(", ") || "none"}`,
-		`Test files: ${analysis.testFiles?.length ?? 0}`,
 		`Has README: ${analysis.hasReadme ? "yes" : "no"} | Has git: ${analysis.hasGit ? "yes" : "no"}`,
 	];
 

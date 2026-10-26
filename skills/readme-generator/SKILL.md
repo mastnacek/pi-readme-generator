@@ -25,6 +25,10 @@ project:
   category: <category-from-registry>
   framework: <primary framework or "">
   packageManager: <npm|cargo|pip|just|"">
+  status: <prototype|in-development|active|production|maintenance|concept|archived>
+  quality: <experimental|alpha|beta|stable|mature>
+  context: <personal|work>
+  progress: <initial|in-progress|feature-complete|completed|paused>
 analysis:
   hasGit: <true|false>
   hasReadme: <true|false>
@@ -58,7 +62,42 @@ Rules:
   need to normalize manually, call `readme_generator` with
   `action: "frontmatter"`.
 
-## Workflow
+## Project Evaluation & Context Recognition
+
+The plugin automatically evaluates project metrics and state, providing initial suggestions in `action: "analyze"`. As the LLM agent, you review and refine these fields using your deep semantic understanding of the source code:
+
+### 1. Project Context (`context: personal | work`)
+Distinguishes whether the repository is a personal/hobby/open-source effort or an internal/work/enterprise project.
+- **`work`**:
+  - Purpose: Internal tools, enterprise automation, customer invoicing, ERP integrations, Domino/Lotus Notes business apps, company workflows.
+  - Path / repo clues: Paths under corporate directories (e.g., `LN_REA`, company names), internal git remotes, enterprise dependencies (`isdoc`, corporate auth, proprietary SDKs).
+  - Domain: Business records, invoicing, employee tooling, domain-specific compliance.
+- **`personal`**:
+  - Purpose: Independent developer utilities, hobbies, pet projects, experimental scratchpads, games, general open-source CLI tools.
+  - Path / repo clues: General personal github repositories, paths under personal dev roots.
+
+### 2. Project State / Status (`status`)
+- **`prototype`**: Proof-of-concept, early experiment, initial spike, incomplete core features.
+- **`in-development`**: Active feature construction, basic functionality working but evolving rapidly.
+- **`active`**: Functional and regularly maintained or used.
+- **`production`**: Battle-tested, stable releases (>= 1.0.0), packaged or deployed for actual usage.
+- **`maintenance`**: Infrequent updates, bugfixes only, feature-frozen.
+- **`concept`**: Ideas, design notes, stub code, architecture sketches.
+- **`archived`**: Deprecated, superseded, or abandoned.
+
+### 3. Project Quality (`quality`)
+- **`experimental`**: No tests, minimal error handling, exploratory code.
+- **`alpha`**: Core logic present but untested edge cases, breaking changes expected.
+- **`beta`**: Reasonable test coverage, structured error handling, API stabilizing.
+- **`stable`**: Comprehensive tests, CI/linting configured, robust error handling and documentation.
+- **`mature`**: Long-term stability, zero major open regressions, extensive test suites and benchmarks.
+
+### 4. Progress (`progress`)
+- **`initial`**: Just started, basic scaffold and setup.
+- **`in-progress`**: Core functionality being implemented.
+- **`feature-complete`**: Planned scope implemented, testing and polishing remaining.
+- **`completed`**: Goal achieved, fully delivered.
+- **`paused`**: Intentionally put on hold.
 
 1. **Analyze.** Call `readme_generator` with `action: "analyze"` for
    structured facts (language, framework, package manager, entry points,
@@ -176,6 +215,7 @@ Rules:
 
 8. **Summarize for the chat.** After finishing, output a brief summary in the chat window with:
    - Project name and one-line description (what it does, who it's for)
+   - Status, quality, progress, and context (`personal` vs `work`)
    - Key tools/scripts/entry points
    - Language, framework, package manager
    - **Project category** (from registry)

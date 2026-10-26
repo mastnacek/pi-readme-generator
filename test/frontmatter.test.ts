@@ -39,6 +39,10 @@ describe("generateFrontmatter", () => {
 		assert.match(fm, /^  description: ""$/m);
 		assert.match(fm, /^  category: ""$/m);
 		assert.match(fm, /^  framework: ""$/m);
+		assert.match(fm, /^  status: "prototype"$/m);
+		assert.match(fm, /^  quality: "experimental"$/m);
+		assert.match(fm, /^  context: "personal"$/m);
+		assert.match(fm, /^  progress: "in-progress"$/m);
 		assert.match(fm, /^  hasGit: true$/m);
 		assert.match(fm, /^  hasReadme: true$/m);
 		assert.match(fm, /^  entryPoints: \["index\.ts"\]$/m);
@@ -86,19 +90,25 @@ describe("normalizeReadmeFrontmatter", () => {
 		assert.equal(validateFrontmatterStructure(result.content).ok, true);
 	});
 
-	it("preserves existing non-empty project.* values", () => {
+	it("preserves existing non-empty project.* values and maps aliases", () => {
 		const existing =
 			"---\n" +
 			"project:\n" +
 			'  description: "My real description"\n' +
 			'  category: "cli-tools"\n' +
+			'  state: "in-development"\n' +
+			'  audience: "work"\n' +
 			"---\n# T\n";
 		const result = normalizeReadmeFrontmatter(existing, makeAnalysis());
 		assert.equal(result.changed, true);
 		assert.match(result.content, /^  description: "My real description"$/m);
 		assert.match(result.content, /^  category: "cli-tools"$/m);
+		assert.match(result.content, /^  status: "in-development"$/m);
+		assert.match(result.content, /^  context: "work"$/m);
 		assert.ok(result.preserved.includes("project.description"));
 		assert.ok(result.preserved.includes("project.category"));
+		assert.ok(result.preserved.includes("project.status"));
+		assert.ok(result.preserved.includes("project.context"));
 		assert.equal(validateFrontmatterStructure(result.content).ok, true);
 	});
 
