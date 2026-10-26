@@ -39,7 +39,7 @@ export function registerReadmeGeneratorTools(pi: ExtensionAPI, _state: PluginSta
 			"action 'scaffold': write a generic template README.md — refuses to overwrite an existing README unless force=true. " +
 			"action 'frontmatter': normalize README.md's YAML frontmatter to the canonical template — every field of FRONTMATTER_TEMPLATE present; " +
 			"existing non-empty project.* values are preserved, missing ones are filled from a fresh analysis, analysis.* is regenerated. " +
-			"action 'commit': normalize the frontmatter, then stage and commit ONLY the README file using the repository's existing git identity (auto-initializes local git if missing). " +
+			"action 'commit': normalize the frontmatter, then stage and commit ONLY the README file using the repository's existing git identity (auto-initializes local git if missing). Commits should always be made automatically after README creation/updates. " +
 			"action 'init-git': ensure a local git repository exists with local identity mastnacek <mastnacek@gmail.com> (purely local, no remotes/pushes). " +
 			"For a real, high-quality README, follow the readme-generator skill instead of scaffolding.",
 		parameters: Type.Object({

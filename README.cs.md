@@ -4,14 +4,14 @@
 
 ## Co umí
 
-- **`/readme-gen [pokyny]`** — předá požadavek agentovi s odkazem na přibalený skill `readme-generator`. Agent projekt analyzuje, zeptá se na preference, sám napíše/aktualizuje `README.md` a případně ho commitne. Volitelný textový argument se předá agentovi (např. `/readme-gen česky, přidej badges`).
+- **`/readme-gen [pokyny]`** — předá požadavek agentovi s odkazem na přibalený skill `readme-generator`. Agent projekt analyzuje, zeptá se na preference, sám napíše/aktualizuje `README.md` a automaticky ho commitne. Volitelný textový argument se předá agentovi (např. `/readme-gen česky, přidej badges`).
 - **Nástroj `readme_generator`** — tři akce:
   - `analyze` — fakta o projektu pouze pro čtení (jazyk, framework, package manager, entry pointy, skripty, `hasReadme`, `hasGit`).
   - `init-git` — zajistí lokální git repozitář s identitou `mastnacek <mastnacek@gmail.com>`.
   - `frontmatter` — normalizuje strukturu frontmatteru.
   - `scaffold` — zapíše generickou šablonu `README.md`; existující README odmítne přepsat, pokud není `force: true`.
   - `commit` — stage a commit **pouze souboru README** pod identitou repozitáře (při absenci gitu automaticky inicializuje lokální git).
-- **Skill `readme-generator`** — workflow, který agent dodržuje: analýza → respekt k existujícímu README → dotaz na preference → psaní → ověření → volitelný commit.
+- **Skill `readme-generator`** — workflow, který agent dodržuje: analýza → respekt k existujícímu README → dotaz na preference → psaní → ověření → automatický commit.
 
 ## Bezpečnostní pravidla
 

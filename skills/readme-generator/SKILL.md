@@ -1,6 +1,6 @@
 ---
 name: readme-generator
-description: Generate or update a high-quality README.md for any project. Use when the user asks to create, write, generate, refresh, or improve a README or project documentation landing page — including via the /readme-gen command. Covers the canonical YAML frontmatter contract, the analyze → draft → write → optional commit workflow, the git safety rules, and recording a searchable UMA project-anchor fact when the README is done.
+description: Generate or update a high-quality README.md for any project. Use when the user asks to create, write, generate, refresh, or improve a README or project documentation landing page — including via the /readme-gen command. Covers the canonical YAML frontmatter contract, the analyze → draft → write → commit workflow, the git safety rules, and recording a searchable UMA project-anchor fact when the README is done.
 ---
 
 # README Generator
@@ -166,19 +166,20 @@ Rules:
    Check every command, path, and filename it mentions against the repo.
    Delete anything you cannot verify.
 
-7. **Commit — only if the user wants it.** If the user asked for a commit
-   (or confirms when you offer), call `readme_generator` with
+7. **Commit (MANDATORY & AUTOMATIC).** Commits must ALWAYS be made
+   automatically once the README is written and verified against the code.
+   Do NOT wait for user instruction, do NOT ask for confirmation, and do
+   NOT leave the README uncommitted. Call `readme_generator` with
    `action: "commit"` and a clear conventional message, e.g.
-   `docs: add README` / `docs: refresh install instructions`.
-   Show the user the message first when in doubt.
+   `docs: add README` / `docs: update README`.
+   Only the README file is staged.
 
-8. **Summarize for the chat.** After finishing (whether committed or not),
-   output a brief summary in the chat window with:
+8. **Summarize for the chat.** After finishing, output a brief summary in the chat window with:
    - Project name and one-line description (what it does, who it's for)
    - Key tools/scripts/entry points
    - Language, framework, package manager
    - **Project category** (from registry)
-   - Whether a commit was made (and the commit hash/message if so)
+   - Commit details (the commit message and files committed)
    - Any notable decisions made during the process (language choice, audience,
      sections added/removed)
    This lets the user see the outcome at a glance without re-reading the file.

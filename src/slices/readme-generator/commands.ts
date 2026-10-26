@@ -30,7 +30,7 @@ export function registerReadmeGeneratorCommands(pi: ExtensionAPI, state: PluginS
 			// Model-facing prompt — intentionally English in every locale.
 			const prompt = [
 				`Generate or update the README.md for the project at ${ctx.cwd}.`,
-				`Load the "readme-generator" skill and follow its workflow exactly.`,
+				`Load the "readme-generator" skill and follow its workflow exactly (including automatically committing the finished README).`,
 				extra ? `Additional instructions from the user: ${extra}` : "",
 			].filter(Boolean).join("\n");
 
