@@ -39,10 +39,11 @@ export function registerReadmeGeneratorTools(pi: ExtensionAPI, _state: PluginSta
 			"action 'scaffold': write a generic template README.md — refuses to overwrite an existing README unless force=true. " +
 			"action 'frontmatter': normalize README.md's YAML frontmatter to the canonical template — every field of FRONTMATTER_TEMPLATE present; " +
 			"existing non-empty project.* values are preserved, missing ones are filled from a fresh analysis, analysis.* is regenerated. " +
-			"action 'commit': normalize the frontmatter, then stage and commit ONLY the README file using the repository's existing git identity. " +
+			"action 'commit': normalize the frontmatter, then stage and commit ONLY the README file using the repository's existing git identity (auto-initializes local git if missing). " +
+			"action 'init-git': ensure a local git repository exists with local identity mastnacek <mastnacek@gmail.com> (purely local, no remotes/pushes). " +
 			"For a real, high-quality README, follow the readme-generator skill instead of scaffolding.",
 		parameters: Type.Object({
-			action: StringEnum(["analyze", "scaffold", "frontmatter", "commit"] as const),
+			action: StringEnum(["analyze", "scaffold", "frontmatter", "commit", "init-git"] as const),
 			projectRoot: Type.Optional(Type.String({ description: "Project root directory (default: current working directory)" })),
 			force: Type.Optional(Type.Boolean({ description: "scaffold only: overwrite an existing README.md (default: false)" })),
 			message: Type.Optional(Type.String({ description: "commit only: commit message (default: conventional docs: message)" })),
@@ -59,8 +60,10 @@ export function registerReadmeGeneratorTools(pi: ExtensionAPI, _state: PluginSta
 					return frontmatter(projectRoot);
 				case "commit":
 					return commit(projectRoot, params.message);
+				case "init-git":
+					return initGit(projectRoot);
 				default:
-					return fail(`Unknown action "${params.action}". Use analyze | scaffold | frontmatter | commit.`);
+					return fail(`Unknown action "${params.action}". Use analyze | scaffold | frontmatter | commit | init-git.`);
 			}
 		},
 	});
@@ -176,6 +179,19 @@ async function commit(projectRoot: string, message?: string): Promise<AgentToolR
 			normalizedNote,
 			{ commit: result }
 		);
+	} catch (error) {
+		return fail(error instanceof Error ? error.message : String(error));
+	}
+}
+
+async function initGit(projectRoot: string): Promise<AgentToolResult<unknown>> {
+	const git = new GitManager(projectRoot);
+	try {
+		const created = await git.ensureRepository();
+		if (created) {
+			return ok("Initialized local git repository with identity mastnacek <mastnacek@gmail.com>.");
+		}
+		return ok("Local git repository already exists. Identity configured.");
 	} catch (error) {
 		return fail(error instanceof Error ? error.message : String(error));
 	}

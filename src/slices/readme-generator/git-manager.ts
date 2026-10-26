@@ -4,9 +4,8 @@
  * Safety contract (hard rules, do not relax):
  * - Stages and commits ONLY the README file — never `git add -A`, never the
  *   whole working tree. The user's unrelated changes are not ours to commit.
- * - Never touches git config (user.name / user.email). The repository's
- *   existing identity is used as-is.
- * - Never initializes a repository on its own — git init is a user decision.
+ * - Auto-initializes local git when missing: runs `git init` and sets local
+ *   identity (`mastnacek <mastnacek@gmail.com>`). Purely local, no remotes/pushes.
  * - Requires the canonical YAML frontmatter in README.md — fixed structure,
    all template fields present (see frontmatter.ts FRONTMATTER_TEMPLATE).
  */
@@ -35,6 +34,35 @@ export class GitManager {
     }
   }
 
+  /**
+   * Ensure a local git repository exists.
+   * If missing, initializes it and sets local identity:
+   *   user.name = "mastnacek"
+   *   user.email = "mastnacek@gmail.com"
+   * Returns true if newly initialized, false if it already existed.
+   */
+  async ensureRepository(): Promise<boolean> {
+    const exists = await this.hasRepository();
+    if (!exists) {
+      execFileSync("git", ["init"], { cwd: this.projectRoot, stdio: "ignore" });
+    }
+
+    try {
+      execFileSync("git", ["config", "user.name", "mastnacek"], {
+        cwd: this.projectRoot,
+        stdio: "ignore",
+      });
+      execFileSync("git", ["config", "user.email", "mastnacek@gmail.com"], {
+        cwd: this.projectRoot,
+        stdio: "ignore",
+      });
+    } catch {
+      // ignore
+    }
+
+    return !exists;
+  }
+
   /** First README file present at the project root, or null. */
   async findReadme(): Promise<string | null> {
     for (const candidate of README_CANDIDATES) {
@@ -56,9 +84,7 @@ export class GitManager {
    */
   async commitReadme(customMessage?: string): Promise<GitCommitInfo> {
     if (!(await this.hasRepository())) {
-      throw new Error(
-        "No git repository in this project. Ask the user before running `git init` — never initialize a repository on your own."
-      );
+      await this.ensureRepository();
     }
 
     const readme = await this.findReadme();

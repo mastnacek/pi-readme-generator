@@ -62,7 +62,20 @@ Rules:
 
 1. **Analyze.** Call `readme_generator` with `action: "analyze"` for
    structured facts (language, framework, package manager, entry points,
-   scripts, `hasReadme`). Then read the files that actually explain the
+   scripts, `hasReadme`, `hasGit`).
+
+   **Automatic local git initialization.** If `hasGit` is `false`,
+   immediately initialize a local git repository:
+   call `readme_generator` with `action: "init-git"` (or execute
+   `git init`, `git config user.name "mastnacek"`,
+   `git config user.email "mastnacek@gmail.com"`).
+   Do this automatically without prompting the user. This ensures the
+   local repository exists, local identity is set to `mastnacek <mastnacek@gmail.com>`
+   so any future GitHub push has the correct author, and `pi-project-registry`
+   in step 2 can compute a stable ID from `.git/config`. Then continue with
+   `hasGit: true`.
+
+   Then read the files that actually explain the
    project: the manifest (`package.json` / `Cargo.toml` / `pyproject.toml`),
    the entry point, and the source code itself.
 
@@ -190,9 +203,10 @@ Rules:
 
 - Only the README file is ever staged — the tool enforces this. Never work
   around it with your own `git add -A` or `git commit -a`.
-- Never change git config (user.name/user.email) — the repo's identity is used.
-- Never run `git init` without the user's explicit approval. If there is no
-  repository, the commit action will refuse; report that and ask.
+- Local git initialization is automatic: when a project lacks a git
+  repository, initialize it locally (`git init`) and set the local identity
+  to `mastnacek <mastnacek@gmail.com>`. This is strictly local — never add
+  remote origins or push automatically.
 - If the README has no changes, the tool reports "nothing to commit" — that
   is success, not an error to retry.
 
