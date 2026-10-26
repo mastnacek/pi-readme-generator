@@ -7,7 +7,7 @@ import type { ProjectAnalysis } from "./types.js";
 export function generateFrontmatter(analysis: ProjectAnalysis): string {
   const { name, description, language, framework, packageManager, scripts,
           entryPoints, testFiles, configFiles, hasGit, hasReadme,
-          dependencies, devDependencies, mainFiles } = analysis;
+          dependencies, devDependencies, mainFiles, category } = analysis;
 
   const lines: string[] = [];
 
@@ -16,6 +16,7 @@ export function generateFrontmatter(analysis: ProjectAnalysis): string {
   lines.push(`  name: "${name}"`);
   lines.push(`  description: "${description.replace(/\n/g, ' ').replace(/"/g, '\\"')}"`);
   lines.push(`  language: "${language}"`);
+  if (category) lines.push(`  category: "${category}"`);
   if (framework) lines.push(`  framework: "${framework}"`);
   if (packageManager) lines.push(`  packageManager: "${packageManager}"`);
 
@@ -51,7 +52,7 @@ export function generateFrontmatter(analysis: ProjectAnalysis): string {
   // Generation metadata
   lines.push(`generator:`);
   lines.push(`  tool: "pi-readme-generator"`);
-  lines.push(`  version: "0.2.0"`);
+  lines.push(`  version: "0.2.1"`);
   lines.push(`  timestamp: "${new Date().toISOString()}"`);
 
   return lines.join('\n');

@@ -17,6 +17,8 @@ export interface ProjectAnalysis {
   configFiles?: string[];
   hasGit: boolean;
   hasReadme: boolean;
+  /** Category from the persistent project registry (~/.pi/projects.json), if registered. */
+  category?: string;
 }
 
 export interface GitCommitInfo {

@@ -67,6 +67,7 @@ async function analyze(projectRoot: string): Promise<AgentToolResult<unknown>> {
 
 	const lines = [
 		`Project: ${analysis.name}`,
+		`Category: ${analysis.category ?? "not registered in ~/.pi/projects.json"}`,
 		`Language: ${analysis.language}${analysis.framework ? `, Framework: ${analysis.framework}` : ""}`,
 		`Package manager: ${analysis.packageManager ?? "unknown"}`,
 		`Entry points: ${analysis.entryPoints?.join(", ") || "none detected"}`,

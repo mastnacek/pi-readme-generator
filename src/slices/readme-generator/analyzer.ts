@@ -3,7 +3,9 @@
  */
 
 import { promises as fs } from "node:fs";
-import { join, basename, relative } from "node:path";
+import { createHash } from "node:crypto";
+import { homedir } from "node:os";
+import { join, basename, relative, resolve } from "node:path";
 import type { ProjectAnalysis } from "./types.js";
 
 export class ProjectAnalyzer {
@@ -54,6 +56,7 @@ export class ProjectAnalyzer {
     
     const hasGit = await this.checkGit();
     const hasReadme = relativeFiles.some(f => f.toLowerCase() === 'readme.md' || f.toLowerCase() === 'readme.txt');
+    const category = await this.lookupRegistryCategory();
     
     const name = packageJson?.name || cargoToml?.package?.name || pyproject?.project?.name || basename(this.projectRoot);
     const description = packageJson?.description || cargoToml?.package?.description || pyproject?.project?.description || `A ${language} project`;
@@ -73,6 +76,7 @@ export class ProjectAnalyzer {
       configFiles,
       hasGit,
       hasReadme,
+      category,
     };
   }
 
@@ -270,6 +274,56 @@ export class ProjectAnalyzer {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Look up this project's category in the persistent project registry
+   * (~/.pi/projects.json, maintained by the pi-project-registry skill).
+   * Matches by stable project ID (same algorithm as the registry: SHA256 of
+   * repo name + origin URL + git config head) or, as a fallback, by the
+   * tracked paths array. Returns undefined when not registered.
+   */
+  private async lookupRegistryCategory(): Promise<string | undefined> {
+    let registry: any;
+    try {
+      registry = JSON.parse(await fs.readFile(join(homedir(), '.pi', 'projects.json'), 'utf-8'));
+    } catch {
+      return undefined;
+    }
+
+    const projects: any[] = Array.isArray(registry?.projects) ? registry.projects : [];
+    if (projects.length === 0) return undefined;
+
+    const id = await this.computeRegistryId();
+    if (id) {
+      const byId = projects.find(p => p?.id === id);
+      if (byId?.category) return byId.category;
+    }
+
+    const normalizedRoot = this.normalizeRegistryPath(this.projectRoot);
+    const byPath = projects.find(p =>
+      Array.isArray(p?.paths) &&
+      p.paths.some((p2: unknown) => typeof p2 === 'string' && this.normalizeRegistryPath(p2) === normalizedRoot)
+    );
+    return byPath?.category ?? undefined;
+  }
+
+  private normalizeRegistryPath(p: string): string {
+    return resolve(p).replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+  }
+
+  /** Replicates _compute_project_id() from the pi-project-registry skill. */
+  private async computeRegistryId(): Promise<string | undefined> {
+    const parts = [basename(this.projectRoot)];
+    try {
+      const configText = await fs.readFile(join(this.projectRoot, '.git', 'config'), 'utf-8');
+      const originMatch = /\[remote "origin"\]\s+url = (.+)/.exec(configText);
+      if (originMatch) parts.push(originMatch[1].trim());
+      parts.push(configText.slice(0, 500));
+    } catch {
+      // no .git/config — ID is based on repo name only
+    }
+    return 'sha256:' + createHash('sha256').update(parts.join('|')).digest('hex').slice(0, 16);
   }
 
   private parseCargoToml(content: string): any {

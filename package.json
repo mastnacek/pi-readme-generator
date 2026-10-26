@@ -1,6 +1,6 @@
 {
   "name": "pi-readme-generator",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Skill-driven README generation: the agent writes the README, the plugin analyzes the project and commits only the README file",
   "type": "module",
   "main": "./index.ts",
