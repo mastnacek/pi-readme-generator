@@ -28,7 +28,29 @@ request, and commits the finished file.
    solely to preserve its custom sections during an update — never to
    learn what the program does.)
 
-2. **Check for an existing README.** If `hasReadme` is true, this is an
+2. **Register / categorize project (MANDATORY).** Use `pi-project-registry`
+   to ensure the project is in the persistent registry with a category.
+   This category informs later steps (tone, sections, examples).
+   ```python
+   from pi_project_registry import project_registry_find, project_registry_register
+   from pathlib import Path
+
+   proj = project_registry_find(Path(project_root))
+   if not proj:
+       # New project — interactive registration with category confirmation
+       result = project_registry_register(Path(project_root), interactive=True)
+       if result.get("needs_category_confirmation"):
+           # Call ask_user_question with result["question_data"]
+           # Then call project_registry_register_confirm with user's choice
+           pass
+       category = result.get("category") or result.get("suggested_category")
+   else:
+       category = proj["category"]
+   ```
+   The `category` (e.g., `invoice-extraction`, `ocr-tools`, `domino-apps`)
+   drives: audience defaults, section suggestions, badge choices, example style.
+
+3. **Check for an existing README.** If `hasReadme` is true, this is an
    UPDATE, not a rewrite:
    - Read it fully first.
    - Preserve the author's voice, custom sections, badges, screenshots, and
@@ -39,16 +61,26 @@ request, and commits the finished file.
      refuses unless `force: true`, and you may pass `force: true` only when
      the user explicitly asked for a from-scratch template.
 
-3. **Ask before writing (interactive sessions).** Use `ask_user_question`
+4. **Ask before writing (interactive sessions).** Use `ask_user_question`
    when preferences are not obvious:
    - Language of the README (default: English — not the chat's language).
-   - Audience and tone (end users vs contributors vs internal).
-   - Sections beyond the essentials (API docs, screenshots, roadmap, FAQ).
+   - Audience and tone (end users vs contributors vs internal) — **pre-filled from category**.
+   - Sections beyond the essentials (API docs, screenshots, roadmap, FAQ) — **suggested per category**.
    - Badges, license mention.
    One round of up to 4 questions, not an interrogation; skip what the
    project already answers.
 
-4. **Write the README** with the `write` (new file) or `edit` (update) tool.
+   **Category-driven defaults:**
+   | Category | Audience | Typical sections | Badges |
+   |----------|----------|------------------|--------|
+   | `invoice-extraction` | End users | Install, Usage, JSON output, Troubleshooting | Python, License, Docker |
+   | `ocr-tools` | End users | Install, Quickstart, CLI ref, Output formats | Python, License |
+   | `domino-apps` | Developers | Install, Agent design, Formula ref, ACL | LotusScript, Domino |
+   | `pi-plugin` | Contributors | Architecture, API, Testing, Publishing | TypeScript, Pi, NPM |
+   | `ml-training` | Researchers | Install, Data, Training, Evaluation, Models | Python, PyTorch, HF |
+   | *other* | End users | Install, Usage, Config | Language, License |
+
+5. **Write the README** with the `write` (new file) or `edit` (update) tool.
    Quality bar:
    - Title + one-paragraph pitch that says WHAT it does and WHO it is for,
      derived from the actual code — never "A <language> project".
@@ -60,22 +92,24 @@ request, and commits the finished file.
      only if the project invites them).
    - Length matched to the project: a small CLI gets one screen; a framework
      gets more. Omit sections that would be empty.
+   - **Category-specific adaptations:** use category to pick tone, depth, examples.
 
-5. **Review before finishing.** Re-read the written file top to bottom.
+6. **Review before finishing.** Re-read the written file top to bottom.
    Check every command, path, and filename it mentions against the repo.
    Delete anything you cannot verify.
 
-6. **Commit — only if the user wants it.** If the user asked for a commit
+7. **Commit — only if the user wants it.** If the user asked for a commit
    (or confirms when you offer), call `readme_generator` with
    `action: "commit"` and a clear conventional message, e.g.
    `docs: add README` / `docs: refresh install instructions`.
    Show the user the message first when in doubt.
 
-7. **Summarize for the chat.** After finishing (whether committed or not),
+8. **Summarize for the chat.** After finishing (whether committed or not),
    output a brief summary in the chat window with:
    - Project name and one-line description (what it does, who it's for)
    - Key tools/scripts/entry points
    - Language, framework, package manager
+   - **Project category** (from registry)
    - Whether a commit was made (and the commit hash/message if so)
    - Any notable decisions made during the process (language choice, audience,
      sections added/removed)
