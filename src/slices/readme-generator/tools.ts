@@ -19,6 +19,7 @@ import type { PluginState } from "../../shared/state.js";
 import { ProjectAnalyzer } from "./analyzer.js";
 import { ReadmeBuilder } from "./readme-builder.js";
 import { GitManager } from "./git-manager.js";
+import { normalizeReadmeFrontmatter } from "./frontmatter.js";
 
 function ok(text: string, details?: Record<string, unknown>): AgentToolResult<unknown> {
 	return { content: [{ type: "text", text }], details };
@@ -36,10 +37,12 @@ export function registerReadmeGeneratorTools(pi: ExtensionAPI, _state: PluginSta
 			"README helper for the current project. " +
 			"action 'analyze': read-only structured facts about the project (language, framework, entry points, scripts, hasReadme). " +
 			"action 'scaffold': write a generic template README.md — refuses to overwrite an existing README unless force=true. " +
-			"action 'commit': stage and commit ONLY the README file using the repository's existing git identity. " +
+			"action 'frontmatter': normalize README.md's YAML frontmatter to the canonical template — every field of FRONTMATTER_TEMPLATE present; " +
+			"existing non-empty project.* values are preserved, missing ones are filled from a fresh analysis, analysis.* is regenerated. " +
+			"action 'commit': normalize the frontmatter, then stage and commit ONLY the README file using the repository's existing git identity. " +
 			"For a real, high-quality README, follow the readme-generator skill instead of scaffolding.",
 		parameters: Type.Object({
-			action: StringEnum(["analyze", "scaffold", "commit"] as const),
+			action: StringEnum(["analyze", "scaffold", "frontmatter", "commit"] as const),
 			projectRoot: Type.Optional(Type.String({ description: "Project root directory (default: current working directory)" })),
 			force: Type.Optional(Type.Boolean({ description: "scaffold only: overwrite an existing README.md (default: false)" })),
 			message: Type.Optional(Type.String({ description: "commit only: commit message (default: conventional docs: message)" })),
@@ -52,10 +55,12 @@ export function registerReadmeGeneratorTools(pi: ExtensionAPI, _state: PluginSta
 					return analyze(projectRoot);
 				case "scaffold":
 					return scaffold(projectRoot, Boolean(params.force));
+				case "frontmatter":
+					return frontmatter(projectRoot);
 				case "commit":
 					return commit(projectRoot, params.message);
 				default:
-					return fail(`Unknown action "${params.action}". Use analyze | scaffold | commit.`);
+					return fail(`Unknown action "${params.action}". Use analyze | scaffold | frontmatter | commit.`);
 			}
 		},
 	});
@@ -111,16 +116,64 @@ async function scaffold(projectRoot: string, force: boolean): Promise<AgentToolR
 	);
 }
 
+async function frontmatter(projectRoot: string): Promise<AgentToolResult<unknown>> {
+	const readmePath = join(projectRoot, "README.md");
+	let content: string;
+	try {
+		content = await fs.readFile(readmePath, "utf-8");
+	} catch {
+		return fail("No README.md at the project root — write one first (or use action 'scaffold').");
+	}
+
+	const analysis = await new ProjectAnalyzer(projectRoot).analyze();
+	const result = normalizeReadmeFrontmatter(content, analysis);
+
+	if (!result.changed) {
+		return ok(
+			"Frontmatter already matches the canonical template — file unchanged. " +
+			"Fill any empty project.* values (especially description) with the edit tool.",
+			{ analysis }
+		);
+	}
+
+	await fs.writeFile(readmePath, result.content, "utf-8");
+	return ok(
+		`Frontmatter normalized to the canonical template. ` +
+		`Filled from analysis: ${result.filled.join(", ") || "none"}. ` +
+		`Preserved existing: ${result.preserved.join(", ") || "none"}. ` +
+		`Next: fill empty project.* values (especially description) with the edit tool.`,
+		{ analysis, filled: result.filled, preserved: result.preserved, path: readmePath }
+	);
+}
+
 async function commit(projectRoot: string, message?: string): Promise<AgentToolResult<unknown>> {
 	const git = new GitManager(projectRoot);
 	try {
+		// Enforce the canonical frontmatter before every commit: normalize
+		// in place from a fresh analysis (no-op when already conforming).
+		const readme = await git.findReadme();
+		let normalizedNote = "";
+		if (readme) {
+			const readmePath = join(projectRoot, readme);
+			const content = await fs.readFile(readmePath, "utf-8");
+			const analysis = await new ProjectAnalyzer(projectRoot).analyze();
+			const result = normalizeReadmeFrontmatter(content, analysis);
+			if (result.changed) {
+				await fs.writeFile(readmePath, result.content, "utf-8");
+				normalizedNote =
+					` Frontmatter was auto-normalized to the canonical template ` +
+					`(filled: ${result.filled.join(", ") || "none"}) — review the empty project.* values.`;
+			}
+		}
+
 		const result = await git.commitReadme(message);
 		if (result.files.length === 0) {
-			return ok(result.message);
+			return ok(result.message + normalizedNote);
 		}
 		return ok(
 			`Committed ${result.files.join(", ")} — "${result.message.split("\n")[0]}"` +
-			(result.isFirstCommit ? " (first commit)" : ""),
+			(result.isFirstCommit ? " (first commit)" : "") +
+			normalizedNote,
 			{ commit: result }
 		);
 	} catch (error) {

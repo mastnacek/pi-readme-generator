@@ -9,6 +9,55 @@ Write READMEs yourself — the value is YOUR understanding of the code, not a
 template. The `readme_generator` tool only gathers facts, scaffolds on explicit
 request, and commits the finished file.
 
+## Canonical frontmatter (non-negotiable)
+
+Every README.md MUST start with this exact YAML frontmatter block — all
+fields, in this order, in both new and updated READMEs. You fill the values;
+the structure is not negotiable (single source of truth:
+`FRONTMATTER_TEMPLATE` in `src/slices/readme-generator/frontmatter.ts`):
+
+```yaml
+---
+project:
+  name: <project-name>
+  description: <one-sentence description derived from the CODE, not prose>
+  language: <primary language>
+  category: <category-from-registry>
+  framework: <primary framework or "">
+  packageManager: <npm|cargo|pip|just|"">
+analysis:
+  hasGit: <true|false>
+  hasReadme: <true|false>
+  mainFiles: [<json array>]
+  entryPoints: [<json array>]
+  configFiles: [<json array>]
+  testFiles: [<json array>]
+  testFileCount: <number>
+  dependencies: [<json array of names>]
+  devDependencies: [<json array of names>]
+  scripts: {<json object>}
+generator:
+  tool: "pi-readme-generator"
+  version: <plugin version>
+  timestamp: <ISO timestamp>
+---
+```
+
+Rules:
+- All fields must be present in every case — use `""` / `[]` / `{}` /
+  `false` / `0` for unknown values; never delete a field.
+- `analysis.*` values come from `action: "analyze"` output, not guessing.
+- `project.*` values (especially `description`) are YOUR job — derive them
+  from the code. Existing non-empty `project.*` values are always preserved
+  by the plugin's normalization; never regress them to placeholders.
+- `generator.*` is machine-managed — do not hand-edit.
+- Enforcement: a plugin hook re-normalizes the frontmatter after every
+  `write`/`edit` of the root README.md (missing fields are filled from a
+  fresh analysis; your non-empty `project.*` values survive). The `commit`
+  action normalizes again and REFUSES a non-conforming structure. If you
+  need to normalize manually, call `readme_generator` with
+  `action: "frontmatter"`.
+
 ## Workflow
 
 1. **Analyze.** Call `readme_generator` with `action: "analyze"` for
@@ -81,6 +130,12 @@ request, and commits the finished file.
    | *other* | End users | Install, Usage, Config | Language, License |
 
 5. **Write the README** with the `write` (new file) or `edit` (update) tool.
+   Start with the canonical frontmatter block (see above) — every field
+   present, `analysis.*` from the analyze output, `project.*` filled from
+   your understanding of the code. When UPDATING an existing README, keep
+   its non-empty `project.*` values (especially `description`) unless they
+   are genuinely wrong; the normalization hook preserves them, so never
+   regress them to placeholders.
    Quality bar:
    - Title + one-paragraph pitch that says WHAT it does and WHO it is for,
      derived from the actual code — never "A <language> project".

@@ -7,13 +7,15 @@
  * - Never touches git config (user.name / user.email). The repository's
  *   existing identity is used as-is.
  * - Never initializes a repository on its own — git init is a user decision.
- * - Requires YAML frontmatter in README.md — mandatory for all READMEs.
+ * - Requires the canonical YAML frontmatter in README.md — fixed structure,
+   all template fields present (see frontmatter.ts FRONTMATTER_TEMPLATE).
  */
 
 import { execFileSync } from "node:child_process";
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
 import type { GitCommitInfo } from "./types.js";
+import { validateFrontmatterStructure } from "./frontmatter.js";
 
 const README_CANDIDATES = ["README.md", "README.markdown", "README.txt", "README"];
 
@@ -105,34 +107,23 @@ export class GitManager {
   }
 
   /**
-   * Validates that the README contains YAML frontmatter.
-   * Frontmatter is mandatory for all README files.
+   * Validates that the README carries the canonical YAML frontmatter:
+   * every field of FRONTMATTER_TEMPLATE present, in the fixed structure.
+   * Empty values are fine — missing fields are not.
    */
   private async validateFrontmatter(readmeFile: string): Promise<void> {
     const readmePath = join(this.projectRoot, readmeFile);
     const content = await fs.readFile(readmePath, "utf-8");
 
-    // Check for YAML frontmatter (--- at start, followed by content, then ---)
-    const trimmed = content.trimStart();
-    if (!trimmed.startsWith("---")) {
+    const result = validateFrontmatterStructure(content);
+    if (!result.ok) {
       throw new Error(
-        "README.md is missing mandatory YAML frontmatter. " +
-        "All README files must start with a frontmatter block. " +
-        "Run `readme_generator action:analyze` then `action:scaffold` to generate a template with frontmatter, " +
-        "or add frontmatter manually. See pi-readme-generator docs for format."
+        "README.md frontmatter does not match the canonical template. " +
+        "Missing fields: " + result.missing.join(", ") + ". " +
+        "Run the readme_generator tool with action \"frontmatter\" to normalize the block " +
+        "(it fills every field from a fresh project analysis, preserving any project.* " +
+        "values you already wrote), then fill in the empty values."
       );
-    }
-
-    // Verify closing --- exists
-    const afterOpening = trimmed.slice(3).trimStart();
-    if (!afterOpening.startsWith("---") && !afterOpening.includes("\n---\n")) {
-      // Check for closing delimiter
-      const closingIdx = afterOpening.indexOf("\n---\n");
-      if (closingIdx === -1) {
-        throw new Error(
-          "README.md has invalid YAML frontmatter: missing closing '---' delimiter."
-        );
-      }
     }
   }
 }

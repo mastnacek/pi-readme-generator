@@ -28,4 +28,4 @@ export interface GitCommitInfo {
 }
 
 /** Actions supported by the readme_generator tool. */
-export type ReadmeAction = "analyze" | "scaffold" | "commit";
+export type ReadmeAction = "analyze" | "scaffold" | "frontmatter" | "commit";

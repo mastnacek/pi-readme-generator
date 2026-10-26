@@ -9,6 +9,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createInitialState } from "./src/shared/state.js";
 import { registerReadmeGeneratorCommands } from "./src/slices/readme-generator/commands.js";
 import { registerReadmeGeneratorTools } from "./src/slices/readme-generator/tools.js";
+import { registerReadmeFrontmatterHooks } from "./src/slices/readme-generator/hooks.js";
 
 /** Subagent recursion guard: avoid duplicating hooks in child sessions. */
 function isDelegatedSession(): boolean {
@@ -26,9 +27,10 @@ export default function (pi: ExtensionAPI): void {
 		if (typeof result === "function") unsubscribers.push(result as () => void);
 	};
 
-	// Wire slices - readme-generator commands and tools
+	// Wire slices - readme-generator commands, tools, and enforcement hooks
 	track(registerReadmeGeneratorCommands(pi, state));
 	track(registerReadmeGeneratorTools(pi, state));
+	track(registerReadmeFrontmatterHooks(pi, state));
 
 	// Drain all listeners on session shutdown
 	pi.on("session_shutdown", async () => {
