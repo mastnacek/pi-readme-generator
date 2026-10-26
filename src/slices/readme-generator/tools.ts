@@ -7,20 +7,16 @@
 
 import type { ExtensionAPI, AgentToolResult } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { StringEnum } from "@earendil-works/pi-ai";
 import type { PluginState } from "../../shared/state.js";
 import { ReadmeGeneratorEngine } from "./engine.js";
 import type { ProgressStage } from "./types.js";
 
-const ActionSchema = StringEnum(["generate", "analyze", "commit", "status"] as const);
-
-export function registerReadmeGeneratorTools(pi: ExtensionAPI, state: PluginState): void {
+export function registerReadmeGeneratorTools(pi: ExtensionAPI, _state: PluginState): void {
 	pi.registerTool({
 		name: "readme_generator",
 		label: "README Generator",
 		description: "Analyze project, generate README.md, initialize git repository, and commit changes with structured messages",
 		parameters: Type.Object({
-			action: ActionSchema,
 			projectRoot: Type.Optional(Type.String({ description: "Project root directory (default: current working directory)" })),
 			customMessage: Type.Optional(Type.String({ description: "Custom commit message (optional)" })),
 		}),
@@ -36,71 +32,21 @@ export function registerReadmeGeneratorTools(pi: ExtensionAPI, state: PluginStat
 			const engine = new ReadmeGeneratorEngine(pi, projectRoot, updateStatus);
 			
 			try {
-				if (params.action === "generate") {
-					const result = await engine.runFullWorkflow(params.customMessage);
-					return {
-						content: [{
-							type: "text",
-							text: `✅ README generated and committed successfully!\n\n` +
-								  `Project: ${result.analysis.name} (${result.analysis.language}${result.analysis.framework ? `, ${result.analysis.framework}` : ''})\n` +
-								  `Commit: ${result.commit.emoji} ${result.commit.message.split('\n')[0]}\n` +
-								  `Files: ${result.commit.files.length} files\n` +
-								  `First commit: ${result.commit.isFirstCommit ? 'Yes' : 'No'}`
-						}],
-						details: {
-							analysis: result.analysis,
-							commit: result.commit,
-							progress: progressLog,
-						}
-					};
-				}
-				
-				if (params.action === "analyze") {
-					const analysis = await engine.analyze();
-					return {
-						content: [{
-							type: "text",
-							text: `🔍 Project Analysis Complete\n\n` +
-								  `Name: ${analysis.name}\n` +
-								  `Language: ${analysis.language}${analysis.framework ? ` (${analysis.framework})` : ''}\n` +
-								  `Package Manager: ${analysis.packageManager || 'none detected'}\n` +
-								  `Main Files: ${analysis.mainFiles.length}\n` +
-								  `Config Files: ${analysis.configFiles?.length ?? 0}\n` +
-								  `Test Files: ${analysis.testFiles?.length ?? 0}\n` +
-								  `Has README: ${analysis.hasReadme ? 'Yes' : 'No'}\n` +
-								  `Has Git: ${analysis.hasGit ? 'Yes' : 'No'}`
-						}],
-						details: { analysis, progress: progressLog }
-					};
-				}
-				
-				if (params.action === "commit") {
-					const commit = await engine.commitChanges(params.customMessage);
-					return {
-						content: [{
-							type: "text",
-							text: `✅ Commit created: ${commit.emoji} ${commit.message.split('\n')[0]}\n` +
-								  `Files: ${commit.files.length}\n` +
-								  `First commit: ${commit.isFirstCommit ? 'Yes' : 'No'}`
-						}],
-						details: { commit, progress: progressLog }
-					};
-				}
-				
-				if (params.action === "status") {
-					return {
-						content: [{
-							type: "text",
-							text: `pi-readme-generator status: OK (enabled=${state.enabled})`
-						}],
-						details: {}
-					};
-				}
-				
+				const result = await engine.runFullWorkflow(params.customMessage);
 				return {
-					content: [{ type: "text", text: "Unknown action" }],
-					isError: true,
-					details: {}
+					content: [{
+						type: "text",
+						text: `✅ README generated and committed successfully!\n\n` +
+							  `Project: ${result.analysis.name} (${result.analysis.language}${result.analysis.framework ? `, ${result.analysis.framework}` : ''})\n` +
+							  `Commit: ${result.commit.emoji} ${result.commit.message.split('\n')[0]}\n` +
+							  `Files: ${result.commit.files.length} files\n` +
+							  `First commit: ${result.commit.isFirstCommit ? 'Yes' : 'No'}`
+					}],
+					details: {
+						analysis: result.analysis,
+						commit: result.commit,
+						progress: progressLog,
+					}
 				};
 			} catch (error) {
 				return {
