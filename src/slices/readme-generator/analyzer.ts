@@ -2,6 +2,7 @@
  * Project analysis logic.
  */
 
+import { execFileSync } from "node:child_process";
 import { promises as fs } from "node:fs";
 import { basename, join, relative } from "node:path";
 import type { ProjectAnalysis } from "./types.js";
@@ -287,7 +288,10 @@ export class ProjectAnalyzer {
 
   private async checkGit(): Promise<boolean> {
     try {
-      await fs.access(join(this.projectRoot, ".git"));
+      execFileSync("git", ["rev-parse", "--show-toplevel"], {
+        cwd: this.projectRoot,
+        stdio: "ignore",
+      });
       return true;
     } catch {
       return false;

@@ -10,7 +10,7 @@
  * locale — the agent is the one being instructed.
  */
 
-import type { ExtensionAPI, AgentToolResult } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, AgentToolResult, ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { promises as fs } from "node:fs";
@@ -40,7 +40,7 @@ export function registerReadmeGeneratorTools(pi: ExtensionAPI, _state: PluginSta
 			"action 'frontmatter': normalize README.md's YAML frontmatter to the canonical template — every field of FRONTMATTER_TEMPLATE present; " +
 			"existing non-empty project.* values are preserved, missing ones are filled from a fresh analysis, analysis.* is regenerated. " +
 			"action 'commit': normalize the frontmatter, then stage and commit ONLY the README file using the repository's existing git identity (auto-initializes local git if missing). Commits should always be made automatically after README creation/updates. " +
-			"action 'init-git': ensure a local git repository exists with local identity mastnacek <mastnacek@gmail.com> (purely local, no remotes/pushes). " +
+			"action 'init-git': ensure a local git repository exists (purely local, no remotes/pushes; sets fallback identity mastnacek <mastnacek@gmail.com> only if no effective git identity is configured). " +
 			"For a real, high-quality README, follow the readme-generator skill instead of scaffolding.",
 		parameters: Type.Object({
 			action: StringEnum(["analyze", "scaffold", "frontmatter", "commit", "init-git"] as const),
@@ -48,8 +48,8 @@ export function registerReadmeGeneratorTools(pi: ExtensionAPI, _state: PluginSta
 			force: Type.Optional(Type.Boolean({ description: "scaffold only: overwrite an existing README.md (default: false)" })),
 			message: Type.Optional(Type.String({ description: "commit only: commit message (default: conventional docs: message)" })),
 		}),
-		async execute(_toolCallId: string, params: any, _signal?: AbortSignal, _onUpdate?: any, _ctx?: any): Promise<AgentToolResult<unknown>> {
-			const projectRoot = params.projectRoot || process.cwd();
+		async execute(_toolCallId: string, params: any, _signal?: AbortSignal, _onUpdate?: any, ctx?: ExtensionToolContext): Promise<AgentToolResult<unknown>> {
+			const projectRoot = params.projectRoot || ctx?.cwd || process.cwd();
 
 			switch (params.action as string) {
 				case "analyze":
@@ -191,9 +191,9 @@ async function initGit(projectRoot: string): Promise<AgentToolResult<unknown>> {
 	try {
 		const created = await git.ensureRepository();
 		if (created) {
-			return ok("Initialized local git repository with identity mastnacek <mastnacek@gmail.com>.");
+			return ok("Initialized local git repository.");
 		}
-		return ok("Local git repository already exists. Identity configured.");
+		return ok("Local git repository already exists.");
 	} catch (error) {
 		return fail(error instanceof Error ? error.message : String(error));
 	}

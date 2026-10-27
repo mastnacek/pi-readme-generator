@@ -106,12 +106,11 @@ Distinguishes whether the repository is a personal/hobby/open-source effort or a
    **Automatic local git initialization.** If `hasGit` is `false`,
    immediately initialize a local git repository:
    call `readme_generator` with `action: "init-git"` (or execute
-   `git init`, `git config user.name "mastnacek"`,
-   `git config user.email "mastnacek@gmail.com"`).
+   `git init`, and set fallback identity `mastnacek <mastnacek@gmail.com>`
+   only if no effective git identity is configured).
    Do this automatically without prompting the user. This ensures the
-   local repository exists, local identity is set to `mastnacek <mastnacek@gmail.com>`
-   so any future GitHub push has the correct author, and `pi-project-registry`
-   in step 2 can compute a stable ID from `.git/config`. Then continue with
+   local repository exists and commits have an author, while preserving
+   any existing work or personal git identity. Then continue with
    `hasGit: true`.
 
    Then read the files that actually explain the
@@ -246,8 +245,8 @@ Distinguishes whether the repository is a personal/hobby/open-source effort or a
   around it with your own `git add -A` or `git commit -a`.
 - Local git initialization is automatic: when a project lacks a git
   repository, initialize it locally (`git init`) and set the local identity
-  to `mastnacek <mastnacek@gmail.com>`. This is strictly local — never add
-  remote origins or push automatically.
+  to `mastnacek <mastnacek@gmail.com>` only if no effective identity is set.
+  This is strictly local — never add remote origins or push automatically.
 - If the README has no changes, the tool reports "nothing to commit" — that
   is success, not an error to retry.
 

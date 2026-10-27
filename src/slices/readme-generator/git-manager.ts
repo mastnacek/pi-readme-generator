@@ -4,8 +4,12 @@
  * Safety contract (hard rules, do not relax):
  * - Stages and commits ONLY the README file — never `git add -A`, never the
  *   whole working tree. The user's unrelated changes are not ours to commit.
- * - Auto-initializes local git when missing: runs `git init` and sets local
- *   identity (`mastnacek <mastnacek@gmail.com>`). Purely local, no remotes/pushes.
+ * - Auto-initializes local git when missing: runs `git init` only when cwd
+ *   is not inside any git repository. Sets local fallback identity
+ *   (`mastnacek <mastnacek@gmail.com>`) only when no effective identity is set.
+ *   Purely local, no remotes/pushes.
+ * - Preserves existing repository identity and global identity — never
+ *   overwrites user.name/user.email when an effective identity is already set.
  * - Requires the canonical YAML frontmatter in README.md — fixed structure,
    all template fields present (see frontmatter.ts FRONTMATTER_TEMPLATE).
  */
@@ -27,7 +31,10 @@ export class GitManager {
 
   async hasRepository(): Promise<boolean> {
     try {
-      await fs.access(join(this.projectRoot, ".git"));
+      execFileSync("git", ["rev-parse", "--show-toplevel"], {
+        cwd: this.projectRoot,
+        stdio: "ignore",
+      });
       return true;
     } catch {
       return false;
@@ -36,31 +43,47 @@ export class GitManager {
 
   /**
    * Ensure a local git repository exists.
-   * If missing, initializes it and sets local identity:
+   * If missing, initializes it and sets local fallback identity:
    *   user.name = "mastnacek"
    *   user.email = "mastnacek@gmail.com"
+   * only when no effective identity (user.email) is set.
    * Returns true if newly initialized, false if it already existed.
    */
   async ensureRepository(): Promise<boolean> {
     const exists = await this.hasRepository();
     if (!exists) {
       execFileSync("git", ["init"], { cwd: this.projectRoot, stdio: "ignore" });
-    }
 
-    try {
-      execFileSync("git", ["config", "user.name", "mastnacek"], {
-        cwd: this.projectRoot,
-        stdio: "ignore",
-      });
-      execFileSync("git", ["config", "user.email", "mastnacek@gmail.com"], {
-        cwd: this.projectRoot,
-        stdio: "ignore",
-      });
-    } catch {
-      // ignore
+      if (!this.hasEffectiveEmail()) {
+        try {
+          execFileSync("git", ["config", "user.name", "mastnacek"], {
+            cwd: this.projectRoot,
+            stdio: "ignore",
+          });
+          execFileSync("git", ["config", "user.email", "mastnacek@gmail.com"], {
+            cwd: this.projectRoot,
+            stdio: "ignore",
+          });
+        } catch {
+          // ignore
+        }
+      }
     }
 
     return !exists;
+  }
+
+  private hasEffectiveEmail(): boolean {
+    try {
+      const email = execFileSync("git", ["config", "user.email"], {
+        cwd: this.projectRoot,
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "ignore"],
+      });
+      return Boolean(email && email.trim());
+    } catch {
+      return false;
+    }
   }
 
   /** First README file present at the project root, or null. */
